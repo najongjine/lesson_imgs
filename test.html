@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Voxel Pelican Riding a Bicycle</title>
+<style>
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 80% 15%, #fff1b8 0 10%, transparent 18%),
+      linear-gradient(#9edcff 0%, #c8f1ff 48%, #ffe2a9 100%);
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  #stage { position: fixed; inset: 0; }
+  .hud {
+    position: fixed;
+    left: 18px;
+    top: 18px;
+    max-width: 390px;
+    color: #17202a;
+    background: rgba(255,255,255,.82);
+    border: 1px solid rgba(255,255,255,.8);
+    border-radius: 18px;
+    box-shadow: 0 18px 60px rgba(33, 61, 78, .18);
+    padding: 14px 16px 13px;
+    backdrop-filter: blur(9px);
+    user-select: none;
+  }
+  .hud h1 { margin: 0 0 5px; font-size: 18px; letter-spacing: .02em; }
+  .hud p { margin: 0; font-size: 13px; line-height: 1.45; }
+  .tag {
+    display: inline-block;
+    margin-top: 9px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: rgba(255, 177, 92, .25);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .corner {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    color: rgba(23,32,42,.72);
+    background: rgba(255,255,255,.62);
+    border-radius: 999px;
+    padding: 8px 11px;
+    font-size: 12px;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+<div id="stage" aria-label="Interactive voxel art scene: a pelican riding a bicycle by the seaside"></div>
+<div class="hud">
+  <h1>Voxel Pelican Cyclist</h1>
+  <p>Drag to orbit, scroll to zoom. Built from blocky pieces: feathers, pouch folds, bike spokes, crab claws, shells, waves, clouds, and a tiny bike-lane sign.</p>
+  <span class="tag">animated seaside voxel diorama</span>
+</div>
+<div class="corner">Pelican-powered promenade ride</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(() => {
+  const stage = document.getElementById('stage');
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0xcff4ff, 12, 34);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  stage.appendChild(renderer.domElement);
+
+  const camera = new THREE.OrthographicCamera(-8, 8, 6, -6, 0.1, 1000);
+  const target = new THREE.Vector3(0, 2.7, 0);
+  let azimuth = Math.PI * 0.26;
+  let elevation = Math.PI * 0.17;
+  const distance = 13;
+
+  function updateCamera() {
+    const r = distance * Math.cos(elevation);
+    camera.position.set(
+      target.x + r * Math.sin(azimuth),
+      target.y + distance * Math.sin(elevation),
+      target.z + r * Math.cos(azimuth)
+    );
+    camera.lookAt(target);
+    camera.updateProjectionMatrix();
+  }
+
+  function resize() {
+    const aspect = window.innerWidth / window.innerHeight;
+    const view = 6.15;
+    camera.left = -view * aspect;
+    camera.right = view * aspect;
+    camera.top = view;
+    camera.bottom = -view;
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    updateCamera();
+  }
+  window.addEventListener('resize', resize);
+
+  scene.add(new THREE.HemisphereLight(0xbff4ff, 0xc58d5a, 2.25));
+
+  const sunLight = new THREE.DirectionalLight(0xffffff, 2.55);
+  sunLight.position.set(6, 9, 7);
+  sunLight.castShadow = true;
+  sunLight.shadow.camera.left = -10;
+  sunLight.shadow.camera.right = 10;
+  sunLight.shadow.camera.top = 10;
+  sunLight.shadow.camera.bottom = -10;
+  sunLight.shadow.mapSize.width = 2048;
+  sunLight.shadow.mapSize.height = 2048;
+  scene.add(sunLight);
+
+  const fill = new THREE.DirectionalLight(0x9bd1ff, 0.82);
+  fill.position.set(-7, 4, -6);
+  scene.add(fill);
+
+  const palette = {
+    ink: 0x17202a,
+    tire: 0x18222d,
+    tireHi: 0x2c3c4e,
+    metal: 0xc7d2dc,
+    metalDark: 0x758594,
+    chrome: 0xe7f1f5,
+    bike: 0x1fb7a6,
+    bikeDark: 0x0b7f79,
+    bikeLight: 0x8df2df,
+    seat: 0x2b2430,
+    wood: 0xbe7f44,
+    woodDark: 0x8f5a2f,
+    woodLight: 0xdfa96a,
+    sand: 0xf3d28f,
+    sandDark: 0xdfb972,
+    shell: 0xffeed4,
+    shellPink: 0xffb6aa,
+    ocean: 0x1aa6c5,
+    oceanDark: 0x157da3,
+    oceanLight: 0x78e5f4,
+    foam: 0xf7ffff,
+    white: 0xfffbec,
+    warmWhite: 0xf7eddb,
+    shadeWhite: 0xded8cc,
+    wing: 0xe9edf0,
+    wingShade: 0xaeb7c2,
+    featherLine: 0x8795a4,
+    beak: 0xffa536,
+    beakTop: 0xffbd48,
+    beakTip: 0x4c3426,
+    pouch: 0xffc06e,
+    pouchShade: 0xe98b4a,
+    leg: 0xf47b20,
+    legDark: 0xbd4a18,
+    helmet: 0x38b7ff,
+    helmetDark: 0x1677c7,
+    helmetLight: 0x9be7ff,
+    grass: 0x58a84d,
+    grassDark: 0x347b3d,
+    flower: 0xff5e8f,
+    red: 0xe64132,
+    yellow: 0xffd84d,
+    lighthouseRed: 0xd83a38,
+    lighthouseWhite: 0xf7f3e9,
+    skyWhite: 0xffffff,
+    cloudShade: 0xd7eef8,
+    crab: 0xff5d3d,
+    star: 0xff8f3f,
+    buoyRed: 0xe84b4b,
+    rope: 0xc09055,
+    signGreen: 0x227f69,
+    signFace: 0xf7f2d2
+  };
+
+  const materialCache = new Map();
+  const geometryCache = new Map();
+
+  function material(color, options = {}) {
+    const key = [color, options.opacity ?? 1, options.emissive ?? 0, options.roughness ?? .72, options.metalness ?? 0].join('|');
+    if (!materialCache.has(key)) {
+      materialCache.set(key, new THREE.MeshStandardMaterial({
+        color,
+        roughness: options.roughness ?? .72,
+        metalness: options.metalness ?? 0,
+        emissive: options.emissive ?? 0x000000,
+        emissiveIntensity: options.emissiveIntensity ?? 0.7,
+        transparent: (options.opacity ?? 1) < 1,
+        opacity: options.opacity ?? 1,
+        depthWrite: (options.opacity ?? 1) >= .65
+      }));
+    }
+    return materialCache.get(key);
+  }
+
+  function geometry(w, h, d) {
+    const key = `${w.toFixed(4)}|${h.toFixed(4)}|${d.toFixed(4)}`;
+    if (!geometryCache.has(key)) geometryCache.set(key, new THREE.BoxGeometry(w, h, d));
+    return geometryCache.get(key);
+  }
+
+  const world = new THREE.Group();
+  scene.add(world);
+
+  function box({
+    group = world,
+    x = 0,
+    y = 0,
+    z = 0,
+    w = 1,
+    h = 1,
+    d = 1,
+    color = 0xffffff,
+    rx = 0,
+    ry = 0,
+    rz = 0,
+    opacity = 1,
+    emissive = 0x000000,
+    roughness = .72,
+    metalness = 0,
+    cast = true,
+    receive = true
+  }) {
+    const mesh = new THREE.Mesh(geometry(w, h, d), material(color, { opacity, emissive, roughness, metalness }));
+    mesh.position.set(x, y, z);
+    mesh.rotation.set(rx, ry, rz);
+    mesh.castShadow = cast;
+    mesh.receiveShadow = receive;
+    group.add(mesh);
+    return mesh;
+  }
+
+  function rod(group, a, b, thickness, color, options = {}) {
+    const start = new THREE.Vector3(a.x, a.y, a.z);
+    const end = new THREE.Vector3(b.x, b.y, b.z);
+    const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+    const dir = new THREE.Vector3().subVectors(end, start);
+    const mesh = box({
+      group,
+      x: mid.x,
+      y: mid.y,
+      z: mid.z,
+      w: dir.length(),
+      h: thickness,
+      d: options.depth ?? thickness,
+      color,
+      opacity: options.opacity ?? 1,
+      metalness: options.metalness ?? 0,
+      roughness: options.roughness ?? .72
+    });
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), dir.normalize());
+    return mesh;
+  }
+
+  function voxelEllipsoid(group, cx, cy, cz, rx, ry, rz, step, colorFn) {
+    const nx = Math.ceil(rx / step);
+    const ny = Math.ceil(ry / step);
+    const nz = Math.ceil(rz / step);
+    for (let ix = -nx; ix <= nx; ix++) {
+      for (let iy = -ny; iy <= ny; iy++) {
+        for (let iz = -nz; iz <= nz; iz++) {
+          const x = ix * step;
+          const y = iy * step;
+          const z = iz * step;
+          const inside = (x * x) / (rx * rx) + (y * y) / (ry * ry) + (z * z) / (rz * rz);
+          if (inside <= 1.02) {
+            const color = typeof colorFn === 'function' ? colorFn(x, y, z, inside) : colorFn;
+            box({ group, x: cx + x, y: cy + y, z: cz + z, w: step * .96, h: step * .96, d: step * .96, color });
+          }
+        }
+      }
+    }
+  }
+
+  function mulberry32(seed) {
+    return function() {
+      let t = seed += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  const rand = mulberry32(777);
+  const animated = { waves: [], clouds: [], gulls: [], lights: [], bobbers: [] };
+
+  const env = new THREE.Group();
+  world.add(env);
+
+  box({ group: env, x: 0, y: -0.13, z: 0.2, w: 14.5, h: .18, d: 8.8, color: palette.sand, receive: true, cast: false });
+  box({ group: env, x: 0, y: -0.09, z: -4.95, w: 15, h: .16, d: 4.15, color: palette.oceanDark, receive: true, cast: false });
+  box({ group: env, x: 0, y: -0.035, z: -5.35, w: 15, h: .09, d: 3.35, color: palette.ocean, receive: true, cast: false });
+
+  for (let i = -7; i <= 7; i++) {
+    const x = i * .82;
+    const c = i % 2 === 0 ? palette.woodLight : palette.wood;
+    box({ group: env, x, y: .015, z: .42, w: .73, h: .13, d: 3.86, color: c });
+    box({ group: env, x: x + .31, y: .105, z: .42, w: .035, h: .025, d: 3.75, color: palette.woodDark });
+    box({ group: env, x: x - .31, y: .105, z: .42, w: .028, h: .024, d: 3.75, color: palette.woodDark });
+    for (const nz of [-1.25, 1.25]) {
+      box({ group: env, x: x - .24, y: .185, z: nz, w: .07, h: .026, d: .07, color: palette.ink });
+      box({ group: env, x: x + .24, y: .185, z: nz, w: .07, h: .026, d: .07, color: palette.ink });
+    }
+    for (let g = 0; g < 3; g++) {
+      box({
+        group: env,
+        x: x + (rand() - .5) * .36,
+        y: .185,
+        z: -1.15 + g * 1.15 + (rand() - .5) * .2,
+        w: .18 + rand() * .16,
+        h: .022,
+        d: .025,
+        color: i % 2 ? palette.woodDark : palette.wood
+      });
+    }
+  }
+
+  box({ group: env, x: 0, y: .16, z: -1.62, w: 12.1, h: .18, d: .14, color: palette.woodDark });
+  box({ group: env, x: 0, y: .16, z: 2.48, w: 12.1, h: .18, d: .14, color: palette.woodDark });
+
+  const fencePosts = [];
+  for (let x = -5.9; x <= 5.95; x += 1.18) {
+    box({ group: env, x, y: .62, z: -1.78, w: .22, h: 1.08, d: .22, color: palette.woodDark });
+    box({ group: env, x, y: 1.2, z: -1.78, w: .32, h: .16, d: .32, color: palette.woodLight });
+    fencePosts.push(x);
+  }
+  for (let i = 0; i < fencePosts.length - 1; i++) {
+    rod(env, { x: fencePosts[i] + .08, y: .94, z: -1.78 }, { x: fencePosts[i + 1] - .08, y: .94, z: -1.78 }, .07, palette.rope);
+    rod(env, { x: fencePosts[i] + .08, y: .72, z: -1.78 }, { x: fencePosts[i + 1] - .08, y: .72, z: -1.78 }, .06, palette.rope);
+  }
+
+  for (let row = 0; row < 4; row++) {
+    for (let i = -9; i <= 9; i++) {
+      if ((i + row) % 2 === 0) {
+        const b = box({
+          group: env,
+          x: i * .72 + row * .18,
+          y: .06,
+          z: -3.15 - row * .72,
+          w: .38 + rand() * .2,
+          h: .07,
+          d: .13,
+          color: row === 0 ? palette.foam : palette.oceanLight
+        });
+        b.userData.wavePhase = rand() * Math.PI * 2;
+        animated.waves.push(b);
+      }
+    }
+  }
+
+  for (let i = 0; i < 72; i++) {
+    const nearFront = rand() > .35;
+    const x = -6.6 + rand() * 13.2;
+    const z = nearFront ? 2.75 + rand() * 1.35 : -2.6 + rand() * .8;
+    const colors = [palette.shell, palette.shellPink, palette.sandDark, palette.oceanLight, palette.woodDark];
+    const s = .045 + rand() * .075;
+    box({
+      group: env,
+      x,
+      y: .085,
+      z,
+      w: s * (1.4 + rand()),
+      h: .03,
+      d: s,
+      color: colors[Math.floor(rand() * colors.length)],
+      rz: rand() * Math.PI
+    });
+  }
+
+  const star = new THREE.Group();
+  star.position.set(-4.15, .12, 3.24);
+  env.add(star);
+  for (let a = 0; a < 5; a++) {
+    const ang = a * Math.PI * 2 / 5;
+    box({ group: star, x: Math.cos(ang) * .13, y: 0, z: Math.sin(ang) * .13, w: .26, h: .055, d: .08, color: palette.star, ry: -ang });
+  }
+  box({ group: star, x: 0, y: .025, z: 0, w: .16, h: .06, d: .16, color: palette.yellow });
+
+  const crab = new THREE.Group();
+  crab.position.set(4.62, .23, 2.98);
+  env.add(crab);
+  box({ group: crab, x: 0, y: .08, z: 0, w: .45, h: .18, d: .28, color: palette.crab });
+  box({ group: crab, x: -.13, y: .21, z: .09, w: .07, h: .08, d: .07, color: palette.ink });
+  box({ group: crab, x: .13, y: .21, z: .09, w: .07, h: .08, d: .07, color: palette.ink });
+  for (const side of [-1, 1]) {
+    rod(crab, { x: side * .22, y: .1, z: .05 }, { x: side * .48, y: .21, z: .16 }, .055, palette.crab);
+    box({ group: crab, x: side * .55, y: .26, z: .19, w: .16, h: .12, d: .09, color: palette.crab, rz: side * .3 });
+    for (let j = 0; j < 3; j++) {
+      rod(crab, { x: side * (.1 + j * .1), y: .04, z: -.12 }, { x: side * (.24 + j * .13), y: .02, z: -.28 }, .035, palette.crab);
+    }
+  }
+  animated.bobbers.push({ object: crab, baseY: .23, amplitude: .025, speed: 5.2, phase: 1.1 });
+
+  const bench = new THREE.Group();
+  bench.position.set(-5.05, .25, 1.76);
+  env.add(bench);
+  box({ group: bench, x: 0, y: .74, z: 0, w: 1.45, h: .18, d: .26, color: palette.woodDark });
+  box({ group: bench, x: 0, y: .48, z: .05, w: 1.55, h: .18, d: .34, color: palette.woodLight });
+  box({ group: bench, x: 0, y: .99, z: -.12, w: 1.35, h: .16, d: .22, color: palette.wood });
+  for (const x of [-.55, .55]) {
+    box({ group: bench, x, y: .2, z: .07, w: .16, h: .42, d: .16, color: palette.ink });
+    rod(bench, { x, y: .36, z: -.1 }, { x: x + .16, y: .03, z: -.18 }, .055, palette.ink);
+  }
+  box({ group: bench, x: -.4, y: .62, z: .32, w: .35, h: .08, d: .25, color: palette.helmetLight });
+  box({ group: bench, x: .63, y: .74, z: .3, w: .14, h: .28, d: .14, color: palette.foam });
+  box({ group: bench, x: .63, y: .93, z: .3, w: .16, h: .04, d: .16, color: palette.red });
+
+  const lighthouse = new THREE.Group();
+  lighthouse.position.set(-5.55, .02, -5.45);
+  env.add(lighthouse);
+  for (let level = 0; level < 9; level++) {
+    const w = .72 - level * .035;
+    const color = level % 2 === 0 ? palette.lighthouseWhite : palette.lighthouseRed;
+    box({ group: lighthouse, x: 0, y: .24 + level * .34, z: 0, w, h: .34, d: w, color });
+  }
+  box({ group: lighthouse, x: 0, y: 3.36, z: 0, w: .92, h: .18, d: .92, color: palette.ink });
+  box({ group: lighthouse, x: 0, y: 3.58, z: 0, w: .62, h: .36, d: .62, color: palette.yellow, emissive: palette.yellow });
+  box({ group: lighthouse, x: 0, y: 3.86, z: 0, w: .82, h: .18, d: .82, color: palette.lighthouseRed });
+  box({ group: lighthouse, x: 0, y: 4.04, z: 0, w: .42, h: .28, d: .42, color: palette.lighthouseRed });
+  box({ group: lighthouse, x: .02, y: .42, z: .38, w: .28, h: .36, d: .05, color: palette.ink });
+  for (let y = 1.18; y < 2.85; y += .7) {
+    box({ group: lighthouse, x: .01, y, z: .37, w: .18, h: .16, d: .055, color: palette.oceanLight, emissive: palette.oceanLight });
+  }
+  const beam1 = box({ group: lighthouse, x: .95, y: 3.58, z: .05, w: 1.95, h: .12, d: .34, color: palette.yellow, opacity: .26, emissive: palette.yellow, cast: false, receive: false });
+  const beam2 = box({ group: lighthouse, x: -.95, y: 3.58, z: .05, w: 1.95, h: .12, d: .34, color: palette.yellow, opacity: .18, emissive: palette.yellow, cast: false, receive: false });
+  animated.lights.push(beam1, beam2);
+
+  const palm = new THREE.Group();
+  palm.position.set(5.45, .05, -2.68);
+  env.add(palm);
+  for (let i = 0; i < 7; i++) {
+    box({ group: palm, x: -.07 * i, y: .32 + i * .31, z: 0, w: .28, h: .36, d: .28, color: i % 2 ? palette.woodDark : palette.wood, rz: -.13 });
+  }
+  const palmTop = { x: -.46, y: 2.62, z: 0 };
+  for (let i = 0; i < 8; i++) {
+    const ang = i * Math.PI * 2 / 8;
+    const len = i % 2 ? 1.0 : .82;
+    rod(palm, palmTop, { x: palmTop.x + Math.cos(ang) * len, y: palmTop.y + .18 * Math.sin(i), z: palmTop.z + Math.sin(ang) * len * .42 }, .18, i % 2 ? palette.grassDark : palette.grass, { depth: .24 });
+    box({ group: palm, x: palmTop.x + Math.cos(ang) * len * .72, y: palmTop.y - .08, z: palmTop.z + Math.sin(ang) * len * .32, w: .34, h: .16, d: .24, color: i % 2 ? palette.grassDark : palette.grass, ry: -ang });
+  }
+  for (const off of [[.08, -.03, .02], [-.1, -.05, .09], [-.02, -.11, -.13]]) {
+    box({ group: palm, x: palmTop.x + off[0], y: palmTop.y + off[1], z: palmTop.z + off[2], w: .15, h: .15, d: .15, color: palette.woodDark });
+  }
+
+  const sun = new THREE.Group();
+  sun.position.set(4.85, 6.05, -7.2);
+  env.add(sun);
+  for (let ix = -2; ix <= 2; ix++) {
+    for (let iy = -2; iy <= 2; iy++) {
+      if (ix * ix + iy * iy <= 5) {
+        box({ group: sun, x: ix * .18, y: iy * .18, z: 0, w: .16, h: .16, d: .16, color: palette.yellow, emissive: palette.yellow, cast: false, receive: false });
+      }
+    }
+  }
+  for (let a = 0; a < 8; a++) {
+    const ang = a * Math.PI * 2 / 8;
+    box({ group: sun, x: Math.cos(ang) * .62, y: Math.sin(ang) * .62, z: 0, w: .22, h: .08, d: .08, color: palette.yellow, rz: ang, emissive: palette.yellow, cast: false, receive: false });
+  }
+
+  function makeCloud(x, y, z, scale, drift) {
+    const cloud = new THREE.Group();
+    cloud.position.set(x, y, z);
+    env.add(cloud);
+    const blocks = [
+      [-.7, 0, 0, .5, .28],
+      [-.35, .16, 0, .62, .42],
+      [0, .08, .02, .72, .36],
+      [.45, .17, 0, .58, .42],
+      [.82, -.02, 0, .42, .28],
+      [-.12, -.16, .03, 1.0, .24]
+    ];
+    for (const b of blocks) {
+      box({
+        group: cloud,
+        x: b[0] * scale,
+        y: b[1] * scale,
+        z: b[2],
+        w: b[3] * scale,
+        h: b[4] * scale,
+        d: .28 * scale,
+        color: b[1] < 0 ? palette.cloudShade : palette.skyWhite,
+        cast: false,
+        receive: false
+      });
+    }
+    cloud.userData.drift = drift;
+    cloud.userData.startX = x;
+    animated.clouds.push(cloud);
+  }
+  makeCloud(-2.9, 5.9, -7.0, .9, .06);
+  makeCloud(1.2, 6.45, -7.6, .72, -.04);
+  makeCloud(-5.6, 5.35, -6.7, .58, .035);
+
+  function makeGull(x, y, z, scale, phase) {
+    const gull = new THREE.Group();
+    gull.position.set(x, y, z);
+    env.add(gull);
+    rod(gull, { x: -.28 * scale, y: 0, z: 0 }, { x: 0, y: .12 * scale, z: 0 }, .035 * scale, palette.ink);
+    rod(gull, { x: 0, y: .12 * scale, z: 0 }, { x: .28 * scale, y: 0, z: 0 }, .035 * scale, palette.ink);
+    gull.userData.phase = phase;
+    gull.userData.startY = y;
+    animated.gulls.push(gull);
+  }
+  makeGull(-1.7, 5.2, -6.4, 1.0, .1);
+  makeGull(-.9, 5.0, -6.5, .72, 1.7);
+  makeGull(2.8, 5.45, -6.8, .82, 2.4);
+
+  const FONT = {
+    A: ['01110','10001','10001','11111','10001','10001','10001'],
+    B: ['11110','10001','10001','11110','10001','10001','11110'],
+    C: ['01111','10000','10000','10000','10000','10000','01111'],
+    E: ['11111','10000','10000','11110','10000','10000','11111'],
+    I: ['11111','00100','00100','00100','00100','00100','11111'],
+    K: ['10001','10010','10100','11000','10100','10010','10001'],
+    L: ['10000','10000','10000','10000','10000','10000','11111'],
+    N: ['10001','11001','10101','10011','10001','10001','10001'],
+    P: ['11110','10001','10001','11110','10000','10000','10000'],
+    ' ': ['0','0','0','0','0','0','0']
+  };
+
+  function voxelText(group, text, x, y, z, scale, color) {
+    let cursor = 0;
+    for (const ch of text.toUpperCase().split('')) {
+      const glyph = FONT[ch] || FONT[' '];
+      const width = glyph[0].length;
+      for (let row = 0; row < glyph.length; row++) {
+        for (let col = 0; col < glyph[row].length; col++) {
+          if (glyph[row][col] === '1') {
+            box({
+              group,
+              x: x + (cursor + col) * scale,
+              y: y - row * scale,
+              z,
+              w: scale * .82,
+              h: scale * .82,
+              d: .045,
+              color,
+              cast: false
+            });
+          }
+        }
+      }
+      cursor += width + 1;
+    }
+  }
+
+  const sign = new THREE.Group();
+  sign.position.set(3.55, .24, 2.55);
+  env.add(sign);
+  box({ group: sign, x: 0, y: .92, z: 0, w: 3.2, h: 1.2, d: .18, color: palette.signFace });
+  box({ group: sign, x: 0, y: .92, z: .105, w: 3.36, h: .14, d: .08, color: palette.signGreen });
+  box({ group: sign, x: 0, y: 1.52, z: .105, w: 3.36, h: .14, d: .08, color: palette.signGreen });
+  box({ group: sign, x: -1.68, y: .92, z: .105, w: .14, h: 1.22, d: .08, color: palette.signGreen });
+  box({ group: sign, x: 1.68, y: .92, z: .105, w: .14, h: 1.22, d: .08, color: palette.signGreen });
+  voxelText(sign, 'PELICAN', -1.33, 1.32, .15, .061, palette.signGreen);
+  voxelText(sign, 'BIKE LANE', -1.47, .76, .15, .052, palette.ink);
+  box({ group: sign, x: -1.1, y: .02, z: -.02, w: .16, h: .5, d: .18, color: palette.woodDark });
+  box({ group: sign, x: 1.1, y: .02, z: -.02, w: .16, h: .5, d: .18, color: palette.woodDark });
+
+  const bike = new THREE.Group();
+  world.add(bike);
+
+  function makeWheel(cx, cy, cz, label) {
+    const wheel = new THREE.Group();
+    wheel.position.set(cx, cy, cz);
+    bike.add(wheel);
+    const tireSegments = 32;
+    const rimSegments = 24;
+    const rTire = 1.03;
+    const rRim = .79;
+
+    for (let i = 0; i < tireSegments; i++) {
+      const theta = i / tireSegments * Math.PI * 2;
+      const x = Math.cos(theta) * rTire;
+      const y = Math.sin(theta) * rTire;
+      box({
+        group: wheel,
+        x,
+        y,
+        z: 0,
+        w: .32,
+        h: .16,
+        d: .38,
+        color: i % 2 === 0 ? palette.tire : palette.tireHi,
+        rz: theta + Math.PI / 2
+      });
+      if (i % 4 === 0) {
+        box({
+          group: wheel,
+          x: Math.cos(theta) * (rTire + .02),
+          y: Math.sin(theta) * (rTire + .02),
+          z: .24,
+          w: .09,
+          h: .08,
+          d: .05,
+          color: palette.oceanLight,
+          rz: theta + Math.PI / 2
+        });
+      }
+    }
+
+    for (let i = 0; i < rimSegments; i++) {
+      const theta = i / rimSegments * Math.PI * 2;
+      box({
+        group: wheel,
+        x: Math.cos(theta) * rRim,
+        y: Math.sin(theta) * rRim,
+        z: .01,
+        w: .2,
+        h: .075,
+        d: .22,
+        color: i % 2 ? palette.metal : palette.chrome,
+        rz: theta + Math.PI / 2,
+        metalness: .22,
+        roughness: .4
+      });
+    }
+
+    for (let i = 0; i < 16; i++) {
+      const theta = i / 16 * Math.PI * 2;
+      rod(wheel, { x: 0, y: 0, z: .03 }, { x: Math.cos(theta) * .75, y: Math.sin(theta) * .75, z: .03 }, .032, palette.metal, { metalness: .25, roughness: .38 });
+    }
+
+    box({ group: wheel, x: 0, y: 0, z: .05, w: .32, h: .32, d: .36, color: palette.metalDark, metalness: .3, roughness: .4 });
+    box({ group: wheel, x: 0, y: 0, z: .27, w: .16, h: .16, d: .12, color: label === 'front' ? palette.red : palette.yellow, emissive: label === 'front' ? 0x441111 : 0x443b0a });
+    return wheel;
+  }
+
+  const backWheel = makeWheel(-2.25, 1.16, 0, 'back');
+  const frontWheel = makeWheel(2.17, 1.16, 0, 'front');
+
+  const backHub = { x: -2.25, y: 1.16, z: 0 };
+  const frontHub = { x: 2.17, y: 1.16, z: 0 };
+  const crank = { x: -.18, y: 1.37, z: 0 };
+  const seatTop = { x: -.82, y: 2.57, z: 0 };
+  const headTop = { x: 1.34, y: 2.62, z: 0 };
+  const forkTop = { x: 1.62, y: 2.36, z: 0 };
+
+  for (const z of [-.23, .23]) {
+    rod(bike, { ...backHub, z }, { ...crank, z }, .105, palette.bikeDark);
+    rod(bike, { ...crank, z }, { ...frontHub, z }, .105, palette.bike);
+    rod(bike, { ...backHub, z }, { ...seatTop, z }, .105, palette.bike);
+    rod(bike, { ...seatTop, z }, { ...crank, z }, .105, palette.bikeLight);
+    rod(bike, { ...seatTop, z }, { ...headTop, z }, .105, palette.bike);
+    rod(bike, { ...headTop, z }, { ...crank, z }, .105, palette.bikeDark);
+    rod(bike, { ...headTop, z }, { ...frontHub, z }, .105, palette.bike);
+    rod(bike, { ...forkTop, z }, { ...frontHub, z }, .09, palette.metalDark, { metalness: .25 });
+  }
+
+  for (const a of [backHub, crank, seatTop, headTop, frontHub]) {
+    rod(bike, { x: a.x, y: a.y, z: -.23 }, { x: a.x, y: a.y, z: .23 }, .075, palette.chrome, { metalness: .28, roughness: .38 });
+  }
+
+  rod(bike, { x: -.82, y: 2.3, z: 0 }, { x: -.82, y: 2.78, z: 0 }, .105, palette.metalDark, { metalness: .28 });
+  box({ group: bike, x: -.98, y: 2.82, z: 0, w: .72, h: .18, d: .5, color: palette.seat, rz: -.08 });
+  box({ group: bike, x: -.71, y: 2.88, z: 0, w: .24, h: .08, d: .42, color: palette.ink, rz: -.08 });
+  rod(bike, { x: 1.35, y: 2.58, z: 0 }, { x: 1.77, y: 2.98, z: .02 }, .095, palette.metalDark, { metalness: .3 });
+  rod(bike, { x: 1.75, y: 2.98, z: .02 }, { x: 2.38, y: 3.03, z: .02 }, .09, palette.metal, { metalness: .35 });
+  rod(bike, { x: 2.32, y: 3.03, z: .02 }, { x: 2.56, y: 2.87, z: .24 }, .075, palette.metal, { metalness: .35 });
+  rod(bike, { x: 2.32, y: 3.03, z: .02 }, { x: 2.56, y: 2.87, z: -.24 }, .075, palette.metal, { metalness: .35 });
+  box({ group: bike, x: 2.65, y: 2.83, z: .32, w: .36, h: .1, d: .16, color: palette.ink });
+  box({ group: bike, x: 2.65, y: 2.83, z: -.32, w: .36, h: .1, d: .16, color: palette.ink });
+  box({ group: bike, x: 2.03, y: 3.13, z: .2, w: .16, h: .14, d: .16, color: palette.yellow, emissive: 0x4a3e00 });
+  box({ group: bike, x: 2.03, y: 3.24, z: .2, w: .11, h: .05, d: .11, color: palette.chrome, metalness: .3 });
+
+  const chainGroup = new THREE.Group();
+  bike.add(chainGroup);
+  for (let i = 0; i < 16; i++) {
+    const theta = i / 16 * Math.PI * 2;
+    box({
+      group: chainGroup,
+      x: crank.x + Math.cos(theta) * .31,
+      y: crank.y + Math.sin(theta) * .31,
+      z: .32,
+      w: .1,
+      h: .045,
+      d: .07,
+      color: palette.metalDark,
+      rz: theta,
+      metalness: .25
+    });
+  }
+
+  for (let i = 0; i <= 18; i++) {
+    const t = i / 18;
+    const x = backHub.x * (1 - t) + crank.x * t;
+    const y = (backHub.y + .07) * (1 - t) + (crank.y + .22) * t;
+    const y2 = (backHub.y - .08) * (1 - t) + (crank.y - .2) * t;
+    box({ group: chainGroup, x, y, z: .34, w: .18, h: .048, d: .065, color: i % 2 ? palette.ink : palette.metalDark, rz: .1 });
+    box({ group: chainGroup, x, y: y2, z: .34, w: .18, h: .048, d: .065, color: i % 2 ? palette.metalDark : palette.ink, rz: -.08 });
+  }
+
+  const pedalNear = { x: .43, y: 1.64, z: .46 };
+  const pedalFar = { x: -.56, y: 1.07, z: -.38 };
+  rod(bike, { x: crank.x, y: crank.y, z: .36 }, pedalNear, .055, palette.ink);
+  rod(bike, { x: crank.x, y: crank.y, z: -.25 }, pedalFar, .055, palette.ink);
+  box({ group: bike, ...pedalNear, w: .46, h: .08, d: .16, color: palette.ink, rz: .08 });
+  box({ group: bike, ...pedalFar, w: .46, h: .08, d: .16, color: palette.ink, rz: -.08 });
+
+  const basket = new THREE.Group();
+  basket.position.set(2.62, 2.34, .47);
+  bike.add(basket);
+  box({ group: basket, x: 0, y: 0, z: 0, w: .9, h: .12, d: .78, color: palette.woodDark });
+  for (let x = -.36; x <= .37; x += .18) {
+    box({ group: basket, x, y: .28, z: .36, w: .065, h: .52, d: .07, color: palette.wood });
+    box({ group: basket, x, y: .28, z: -.36, w: .065, h: .52, d: .07, color: palette.wood });
+  }
+  for (let z = -.28; z <= .29; z += .18) {
+    box({ group: basket, x: -.45, y: .28, z, w: .07, h: .52, d: .055, color: palette.woodLight });
+    box({ group: basket, x: .45, y: .28, z, w: .07, h: .52, d: .055, color: palette.woodLight });
+  }
+  for (let y = .12; y <= .52; y += .18) {
+    box({ group: basket, x: 0, y, z: .39, w: .92, h: .055, d: .06, color: palette.woodLight });
+    box({ group: basket, x: 0, y, z: -.39, w: .92, h: .055, d: .06, color: palette.woodDark });
+  }
+  box({ group: basket, x: -.18, y: .62, z: .03, w: .52, h: .13, d: .17, color: palette.oceanLight, rz: .08 });
+  box({ group: basket, x: .12, y: .62, z: .03, w: .16, h: .1, d: .2, color: palette.foam });
+  box({ group: basket, x: -.48, y: .62, z: .03, w: .18, h: .13, d: .26, color: palette.oceanDark, rz: .8 });
+  box({ group: basket, x: -.02, y: .72, z: .18, w: .07, h: .05, d: .05, color: palette.ink });
+
+  for (const cx of [-2.25, 2.17]) {
+    for (let i = 0; i < 7; i++) {
+      box({
+        group: env,
+        x: cx + (i - 3) * .18,
+        y: .09,
+        z: .36,
+        w: 1.05 - i * .07,
+        h: .025,
+        d: .34,
+        color: palette.ink,
+        opacity: .12,
+        cast: false,
+        receive: false
+      });
+    }
+  }
+
+  const pelican = new THREE.Group();
+  world.add(pelican);
+
+  voxelEllipsoid(pelican, -.33, 3.32, 0, .88, .62, .52, .17, (x, y, z) => {
+    if (y < -.32) return palette.shadeWhite;
+    if (z > .25 && y < .15) return palette.wing;
+    if (x < -.55) return palette.warmWhite;
+    return palette.white;
+  });
+
+  voxelEllipsoid(pelican, .22, 3.36, .02, .42, .42, .4, .15, (x, y) => y < -.12 ? palette.warmWhite : palette.white);
+  box({ group: pelican, x: -.12, y: 2.77, z: .08, w: .42, h: .18, d: .34, color: palette.shadeWhite });
+
+  box({ group: pelican, x: -.48, y: 3.38, z: .57, w: 1.14, h: .45, d: .15, color: palette.wing, rz: -.08 });
+  box({ group: pelican, x: -.56, y: 3.16, z: .66, w: .92, h: .18, d: .13, color: palette.wingShade, rz: -.08 });
+  for (let i = 0; i < 6; i++) {
+    box({
+      group: pelican,
+      x: -.94 + i * .18,
+      y: 3.02 - Math.abs(i - 2) * .025,
+      z: .72,
+      w: .14,
+      h: .26,
+      d: .1,
+      color: i % 2 ? palette.featherLine : palette.wingShade,
+      rz: -.05
+    });
+  }
+  box({ group: pelican, x: -.38, y: 3.36, z: -.5, w: 1.0, h: .38, d: .12, color: palette.shadeWhite, rz: -.08 });
+  box({ group: pelican, x: .72, y: 3.03, z: .49, w: .42, h: .18, d: .18, color: palette.warmWhite, rz: -.38 });
+  box({ group: pelican, x: 1.02, y: 2.83, z: .49, w: .38, h: .16, d: .15, color: palette.warmWhite, rz: -.14 });
+  box({ group: pelican, x: 1.19, y: 2.78, z: .48, w: .16, h: .12, d: .14, color: palette.shadeWhite });
+
+  for (let i = 0; i < 5; i++) {
+    const z = -.34 + i * .17;
+    box({
+      group: pelican,
+      x: -1.12,
+      y: 3.31 - Math.abs(i - 2) * .035,
+      z,
+      w: .42,
+      h: .18,
+      d: .13,
+      color: i % 2 ? palette.shadeWhite : palette.white,
+      rz: .18
+    });
+    box({
+      group: pelican,
+      x: -1.36,
+      y: 3.25 - Math.abs(i - 2) * .035,
+      z,
+      w: .18,
+      h: .13,
+      d: .12,
+      color: palette.wingShade,
+      rz: .18
+    });
+  }
+
+  const neckNodes = [
+    [.23, 3.72, 0, .28, .26],
+    [.36, 3.93, .01, .27, .25],
+    [.52, 4.11, .01, .25, .23],
+    [.72, 4.25, 0, .24, .22],
+    [.92, 4.34, 0, .23, .21]
+  ];
+  for (const n of neckNodes) {
+    voxelEllipsoid(pelican, n[0], n[1], n[2], n[3], n[4], .24, .115, (x, y, z) => z > .13 || y < -.08 ? palette.warmWhite : palette.white);
+  }
+  box({ group: pelican, x: .72, y: 3.98, z: .28, w: .09, h: .56, d: .07, color: palette.shadeWhite, rz: -.38 });
+  box({ group: pelican, x: .86, y: 4.08, z: .29, w: .07, h: .34, d: .06, color: palette.wingShade, rz: -.47 });
+
+  voxelEllipsoid(pelican, 1.22, 4.39, 0, .43, .34, .36, .13, (x, y, z) => {
+    if (y < -.13) return palette.warmWhite;
+    if (z > .17) return palette.white;
+    return palette.white;
+  });
+  box({ group: pelican, x: 1.33, y: 4.34, z: .35, w: .2, h: .16, d: .08, color: palette.warmWhite });
+  box({ group: pelican, x: 1.39, y: 4.48, z: .4, w: .075, h: .075, d: .045, color: palette.ink });
+  box({ group: pelican, x: 1.415, y: 4.505, z: .432, w: .028, h: .028, d: .025, color: palette.foam });
+  box({ group: pelican, x: 1.24, y: 4.5, z: -.36, w: .06, h: .06, d: .045, color: palette.ink });
+  box({ group: pelican, x: 1.2, y: 4.55, z: .38, w: .18, h: .035, d: .05, color: palette.ink, rz: -.08 });
+  for (let i = 0; i < 3; i++) {
+    box({
+      group: pelican,
+      x: .96 + i * .12,
+      y: 4.67 + i * .025,
+      z: .01,
+      w: .09,
+      h: .15,
+      d: .12,
+      color: i === 1 ? palette.shadeWhite : palette.white,
+      rz: -.25 + i * .13
+    });
+  }
+
+  box({ group: pelican, x: 1.18, y: 4.68, z: 0, w: .72, h: .16, d: .58, color: palette.helmet });
+  box({ group: pelican, x: 1.02, y: 4.76, z: 0, w: .46, h: .16, d: .46, color: palette.helmetLight });
+  box({ group: pelican, x: 1.38, y: 4.62, z: .02, w: .34, h: .09, d: .5, color: palette.helmetDark });
+  box({ group: pelican, x: 1.53, y: 4.56, z: .12, w: .32, h: .075, d: .35, color: palette.helmetDark, rz: -.06 });
+  box({ group: pelican, x: 1.02, y: 4.76, z: .31, w: .06, h: .13, d: .08, color: palette.helmetDark });
+  box({ group: pelican, x: 1.22, y: 4.78, z: .31, w: .06, h: .13, d: .08, color: palette.helmetDark });
+  rod(pelican, { x: 1.24, y: 4.52, z: .4 }, { x: 1.35, y: 4.17, z: .35 }, .035, palette.ink);
+  rod(pelican, { x: 1.02, y: 4.5, z: -.32 }, { x: 1.17, y: 4.16, z: -.3 }, .03, palette.ink);
+
+  box({ group: pelican, x: 2.08, y: 4.32, z: 0, w: 1.55, h: .22, d: .36, color: palette.beakTop });
+  box({ group: pelican, x: 2.02, y: 4.45, z: .02, w: 1.32, h: .08, d: .28, color: palette.yellow });
+  box({ group: pelican, x: 2.89, y: 4.29, z: 0, w: .34, h: .18, d: .3, color: palette.beak });
+  box({ group: pelican, x: 3.11, y: 4.28, z: 0, w: .18, h: .15, d: .25, color: palette.beakTip });
+  box({ group: pelican, x: 2.08, y: 4.1, z: 0, w: 1.43, h: .18, d: .32, color: palette.pouch });
+  box({ group: pelican, x: 1.98, y: 3.92, z: 0, w: 1.15, h: .18, d: .29, color: palette.pouch });
+  box({ group: pelican, x: 2.1, y: 3.76, z: 0, w: .82, h: .17, d: .26, color: palette.pouchShade });
+  box({ group: pelican, x: 2.23, y: 3.61, z: 0, w: .46, h: .13, d: .21, color: palette.pouchShade });
+  box({ group: pelican, x: 2.05, y: 4.18, z: .205, w: 1.25, h: .035, d: .045, color: palette.beakTip });
+  box({ group: pelican, x: 1.8, y: 3.96, z: .19, w: .42, h: .045, d: .04, color: palette.pouchShade, rz: -.18 });
+  box({ group: pelican, x: 2.25, y: 3.83, z: .19, w: .38, h: .045, d: .04, color: palette.pouchShade, rz: .12 });
+  box({ group: pelican, x: 2.0, y: 4.38, z: .22, w: .085, h: .042, d: .04, color: palette.ink });
+  box({ group: pelican, x: 2.68, y: 4.43, z: .19, w: .13, h: .045, d: .04, color: palette.yellow });
+
+  const kneeNear = { x: .04, y: 2.25, z: .36 };
+  const kneeFar = { x: -.48, y: 2.16, z: -.3 };
+  rod(pelican, { x: -.18, y: 2.8, z: .2 }, kneeNear, .105, palette.leg);
+  rod(pelican, kneeNear, { x: .42, y: 1.76, z: .43 }, .105, palette.leg);
+  box({ group: pelican, ...kneeNear, w: .16, h: .16, d: .14, color: palette.legDark });
+  rod(pelican, { x: -.55, y: 2.75, z: -.15 }, kneeFar, .09, palette.legDark);
+  rod(pelican, kneeFar, { x: -.55, y: 1.16, z: -.36 }, .09, palette.leg);
+  box({ group: pelican, ...kneeFar, w: .14, h: .14, d: .12, color: palette.legDark });
+
+  function makeFoot(group, x, y, z, side) {
+    box({ group, x, y, z, w: .42, h: .11, d: .18, color: palette.leg, rz: side * .05 });
+    for (let i = -1; i <= 1; i++) {
+      box({
+        group,
+        x: x + .18 + i * .02,
+        y: y - .03,
+        z: z + i * .11,
+        w: .24,
+        h: .07,
+        d: .08,
+        color: i === 0 ? palette.leg : palette.legDark,
+        rz: side * .12
+      });
+    }
+    box({ group, x: x - .16, y: y - .02, z, w: .17, h: .08, d: .15, color: palette.legDark });
+  }
+  makeFoot(pelican, .46, 1.72, .46, 1);
+  makeFoot(pelican, -.56, 1.13, -.36, -1);
+
+  box({ group: pelican, x: .42, y: 4.02, z: .36, w: .3, h: .09, d: .09, color: palette.red, rz: -.25 });
+  box({ group: pelican, x: .22, y: 3.98, z: .43, w: .32, h: .08, d: .08, color: palette.red, rz: -.58 });
+  box({ group: pelican, x: .08, y: 3.87, z: .46, w: .2, h: .07, d: .07, color: palette.buoyRed, rz: -.72 });
+
+  box({ group: env, x: -.34, y: .115, z: .44, w: 1.95, h: .025, d: .54, color: palette.ink, opacity: .1, cast: false, receive: false });
+
+  function makeGrassPatch(x, z, count, flower = false) {
+    const g = new THREE.Group();
+    g.position.set(x, .1, z);
+    env.add(g);
+    for (let i = 0; i < count; i++) {
+      const ox = (rand() - .5) * .45;
+      const oz = (rand() - .5) * .32;
+      const h = .18 + rand() * .28;
+      box({
+        group: g,
+        x: ox,
+        y: h / 2,
+        z: oz,
+        w: .055,
+        h,
+        d: .055,
+        color: rand() > .5 ? palette.grass : palette.grassDark,
+        rz: (rand() - .5) * .55
+      });
+    }
+    if (flower) {
+      box({ group: g, x: .04, y: .44, z: .02, w: .08, h: .08, d: .08, color: palette.flower });
+      box({ group: g, x: -.06, y: .38, z: .05, w: .07, h: .07, d: .07, color: palette.yellow });
+    }
+  }
+  makeGrassPatch(-5.8, 2.92, 8, true);
+  makeGrassPatch(5.9, 2.1, 9, true);
+  makeGrassPatch(4.6, -2.25, 7, false);
+  makeGrassPatch(-4.45, -2.32, 6, false);
+
+  const buoy = new THREE.Group();
+  buoy.position.set(-3.15, .15, -3.05);
+  env.add(buoy);
+  box({ group: buoy, x: 0, y: .24, z: 0, w: .28, h: .48, d: .28, color: palette.foam });
+  box({ group: buoy, x: 0, y: .18, z: 0, w: .32, h: .12, d: .32, color: palette.buoyRed });
+  box({ group: buoy, x: 0, y: .4, z: 0, w: .32, h: .12, d: .32, color: palette.buoyRed });
+  rod(env, { x: -3.15, y: .28, z: -3.05 }, { x: -2.7, y: .18, z: -2.85 }, .04, palette.rope);
+  animated.bobbers.push({ object: buoy, baseY: .15, amplitude: .035, speed: 3.1, phase: .4 });
+
+  box({ group: bike, x: -2.25, y: 2.19, z: .3, w: .055, h: .22, d: .055, color: palette.chrome, metalness: .35 });
+  box({ group: bike, x: 2.17, y: 2.19, z: .3, w: .055, h: .22, d: .055, color: palette.chrome, metalness: .35 });
+
+  for (let i = 0; i < 9; i++) {
+    box({
+      group: env,
+      x: -2.9 - i * .18,
+      y: .17 + rand() * .04,
+      z: 1.12 + (rand() - .5) * .18,
+      w: .08 + rand() * .08,
+      h: .03,
+      d: .07 + rand() * .05,
+      color: palette.sandDark,
+      opacity: .55,
+      cast: false
+    });
+  }
+
+  let dragging = false;
+  let lastX = 0;
+  let lastY = 0;
+
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    renderer.domElement.setPointerCapture(e.pointerId);
+  });
+
+  renderer.domElement.addEventListener('pointerup', (e) => {
+    dragging = false;
+    renderer.domElement.releasePointerCapture(e.pointerId);
+  });
+
+  renderer.domElement.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    azimuth -= dx * .006;
+    elevation = Math.max(.16, Math.min(.92, elevation + dy * .004));
+    updateCamera();
+  });
+
+  renderer.domElement.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    camera.zoom = Math.max(.55, Math.min(1.85, camera.zoom * (e.deltaY > 0 ? .93 : 1.08)));
+    camera.updateProjectionMatrix();
+  }, { passive: false });
+
+  const clock = new THREE.Clock();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const t = clock.getElapsedTime();
+
+    backWheel.rotation.z = -t * 2.6;
+    frontWheel.rotation.z = -t * 2.6;
+    chainGroup.rotation.z = Math.sin(t * 2.6) * .015;
+    pelican.position.y = Math.sin(t * 5.2) * .035;
+    pelican.rotation.z = Math.sin(t * 3.4) * .012;
+
+    for (const w of animated.waves) {
+      w.position.y = .06 + Math.sin(t * 2.2 + w.userData.wavePhase) * .035;
+    }
+
+    for (const c of animated.clouds) {
+      c.position.x = c.userData.startX + Math.sin(t * c.userData.drift) * .35;
+    }
+
+    for (const g of animated.gulls) {
+      g.position.y = g.userData.startY + Math.sin(t * 2 + g.userData.phase) * .045;
+      g.rotation.z = Math.sin(t * 3.3 + g.userData.phase) * .08;
+    }
+
+    for (const l of animated.lights) {
+      l.scale.x = 1 + Math.sin(t * 1.7) * .08;
+      l.material.opacity = .18 + Math.sin(t * 2.1) * .055;
+    }
+
+    for (const b of animated.bobbers) {
+      b.object.position.y = b.baseY + Math.sin(t * b.speed + b.phase) * b.amplitude;
+      b.object.rotation.z = Math.sin(t * b.speed * .7 + b.phase) * .025;
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  resize();
+  animate();
+})();
+</script>
+</body>
+</html>
